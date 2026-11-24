@@ -4,6 +4,10 @@
 ## Basic Startup
 從0開始，到能夠成功進入Main function
 
+## Peripheral Bring-up
+開啟GPIO Output功能，觀察LED燈
+開啟USART 6 Polling TX功能
+
 # 環境需求
 
 ## 硬體環境
