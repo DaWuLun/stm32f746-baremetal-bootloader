@@ -1,7 +1,7 @@
 MEMORY
 {
-    /* Embedded Flash, accessible through ITCM interface */
-    ITCM_FLASH (rx) : ORIGIN = 0x00200000, LENGTH = 1024K
+    /* Bootloader uses first 32 KB sector */
+    ITCM_FLASH (rx) : ORIGIN = 0x00200000, LENGTH = 32K
 
     /* Data Tightly Coupled Memory */
     DTCM (rw) : ORIGIN = 0x20000000, LENGTH = 64K

@@ -12,6 +12,9 @@
 開啟GPIO按鈕中斷
 每次按下按鈕後，USART輸出字串
 
+## Application Handoff
+使用兩份分開編譯的Image File，Loader與App，並且能從Loader跳去App Image
+
 # 環境需求
 
 ## 硬體環境

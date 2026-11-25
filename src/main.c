@@ -181,7 +181,7 @@ int main(void) {
 
         counter++;
         if (send_data_flag == 1) {
-            usart6_puts("Hello World\r\n\0");
+            usart6_puts("[App] Hello World\r\n\0");
             send_data_flag = 0;
         }
     }
