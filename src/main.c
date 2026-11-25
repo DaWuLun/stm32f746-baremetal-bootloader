@@ -2,6 +2,10 @@
 #include <rcc.h>
 #include <gpio.h>
 #include <usart.h>
+#include <exti.h>
+#include <faults.h>
+#include <syscfg.h>
+#include <scs.h>
 
 /* Observe sections */
 uint32_t counter = 123;             // .data
@@ -9,6 +13,63 @@ uint32_t buffer[256];               // .bss
 const uint32_t lookup_table[4] = {  // .rodata
     10, 20, 30, 40
 };
+
+volatile uint8_t send_data_flag = 0;
+
+// break delay & break top_half --> info & record registers --> press button --> continue
+// --> info registers & print frame->* to check the stack frame
+void exti11_top_half( const exception_frame_t *frame, uint32_t exc_return)
+{
+    // Check the interrupt src
+    if (EXTI->PR & (1UL << 11)) {
+        /* Clear pending bit */
+        EXTI->PR = (1UL << 11);
+
+        /* Record event for bottom half */
+        send_data_flag = 1;
+    }
+    /*
+     * frame->pc   = interrupted PC
+     * frame->xpsr = interrupted xPSR
+     * exc_return  = Exception Return token
+     */
+    (void) frame;
+    (void) exc_return;
+}
+
+__attribute__((naked))
+void EXTI15_10_IRQHandler(void) {
+    // Dump stack frame when IRQ happened.
+    // Refer to PM0253 Ch 2.4.7 Exception entry and return for further info.
+    __asm volatile(
+        "tst lr, #4        \n"
+        "ite eq            \n"
+        "mrseq r0, msp     \n"
+        "mrsne r0, psp     \n"
+        "mov r1, lr        \n"
+        "b exti11_top_half\n"
+    );
+}
+
+static void enable_gpioi11_interrupt() {
+    /* Route PI11 to EXTI11 */
+    SYSCFG->EXTICR3 = (SYSCFG->EXTICR3 & ~0x0000F000) | 0x00008000;
+
+    /* Configure EXTI trigger */
+    // Raising edge disabled, falling edge enabled.
+    EXTI->RTSR &= ~(1UL << 11);
+    EXTI->FTSR |=  (1UL << 11);
+
+    /* Clear stale EXTI pending */
+    EXTI->PR = (1UL << 11);
+
+    /* Unmask EXTI11 interrupt */
+    EXTI->IMR |= (1UL << 11);
+
+    /* Enable IRQ40 in NVIC */
+    NVIC->ISER[1] = (1UL << 8);
+}
+
 
 static void delay(void)
 {
@@ -27,6 +88,12 @@ static void enable_gpioi() {
     // Enable GPIOI clock, locates at AHB1
     RCC->AHB1ENR |= (1 << 8);
     (void) RCC->AHB1ENR;
+}
+
+static void enable_syscfg() {
+    // Enable SYSCFG clock, locates at APB2
+    RCC->APB2ENR |= (1 << 14);
+    (void) RCC->APB2ENR;
 }
 
 static void enable_usart6() {
@@ -98,6 +165,8 @@ int main(void) {
 
     enable_gpioc();
     enable_gpioi();
+    enable_syscfg();
+    enable_gpioi11_interrupt();
     enable_usart6();
 
     // Set GPIO I1 = output mode
@@ -111,7 +180,9 @@ int main(void) {
         delay();
 
         counter++;
-
-        usart6_puts("Hello World\r\n\0");
+        if (send_data_flag == 1) {
+            usart6_puts("Hello World\r\n\0");
+            send_data_flag = 0;
+        }
     }
 }

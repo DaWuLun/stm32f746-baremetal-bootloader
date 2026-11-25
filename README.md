@@ -8,6 +8,10 @@
 開啟GPIO Output功能，觀察LED燈
 開啟USART 6 Polling TX功能
 
+## Interrupt
+開啟GPIO按鈕中斷
+每次按下按鈕後，USART輸出字串
+
 # 環境需求
 
 ## 硬體環境
